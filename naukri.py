@@ -1,5 +1,7 @@
 #! python3
 # Naukri Daily update - Using firefox
+import inspect
+import os
 import sys
 import time
 import logging
@@ -9,6 +11,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.firefox.options import Options
 
 
 # Update your username, password and mobile number before start
@@ -18,8 +21,9 @@ mob = ""
 
 naukri_url = "https://login.naukri.com/nLogin/Login.php"
 profile_url = 'https://www.naukri.com/mnjuser/profile'
-
-log_file_path = "naukri.log"
+current_dr = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+log_file_path =  os.path.join(current_dr, 'naukri.log')
+driver_log_path=os.path.join(current_dr, "geckodriver.log")
 logging.basicConfig(level=logging.INFO,
                     filename=log_file_path,
                     format='%(asctime)s    : %(message)s')
@@ -36,12 +40,6 @@ def tear_down(driver):
     try:
         driver.close()
         logging.info('Driver Closed Successfully')
-    except Exception as e:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        line_no = str(exc_tb.tb_lineno)
-        logging.info('Error : %s : %s at Line %s.' % (type(e), e, line_no))
-
-    try:
         driver.quit()
         logging.info('Driver Quit Successfully')
     except Exception as e:
@@ -55,7 +53,14 @@ def naukri_login():
     status = False
 
     try:
-        driver = webdriver.Firefox()
+        options = Options()
+        options.headless = True
+        options.add_argument('window-size=1200x1040')
+        options.add_argument("--disable-notifications")
+        options.add_argument("--start-maximized")
+        options.add_argument("--disable-popups")
+        driver = webdriver.Firefox(options=options, service_log_path=driver_log_path)
+
         driver.maximize_window()
         print("Firefox Launched!")
         logging.info("Firefox Launched!")
@@ -109,18 +114,20 @@ def naukri_login():
         line_no = str(exc_tb.tb_lineno)
         logging.info('Error while logging in to account: %s : %s at line %s.\n' % (type(e), e, line_no))
         print('Error while logging in to account: %s : %s at line %s.' % (type(e), e, line_no))
+        return (status, driver)
 
 
 def update_profile(driver):
     try:
         driver.get(profile_url)
         driver.implicitly_wait(10)
+        time.sleep(3)
         mob_xpath = '//*[@id="mob_number"]'
         profedit_xpath = "/html/body/div[2]/div/div[1]/span/div/div/div/div/div/div[1]/div[1]/div/div[1]/div/div[2]/div[1]/div/div[1]/em"
         save_xpath = '//*[@id="saveBasicDetailsBtn"]'
         element = driver.find_element_by_xpath(profedit_xpath)
         driver.execute_script("arguments[0].click();", element)
-        time.sleep(10)
+        time.sleep(4)
 
         if is_element_present(driver, By.XPATH, save_xpath):
             mob_field_element = driver.find_element_by_xpath(mob_xpath)
